@@ -3,24 +3,39 @@ package ir.dorehami.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import ir.dorehami.app.data.SessionStore
 import ir.dorehami.app.ui.DorehamiTheme
+import ir.dorehami.app.ui.LoginScreen
+import ir.dorehami.app.ui.RegisterScreen
 
-/** مرحلهٔ ۰: فقط اسکلت؛ صفحه‌ها در مرحله‌های بعد */
+/** فاز ۱: ثبت‌نام، ورود و نگهداری نشست. نقشه و چت در فازهای بعد. */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val store = SessionStore(applicationContext)
         setContent {
             DorehamiTheme {
-                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("دورهمی", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineLarge)
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                        var screen by remember { mutableStateOf(if (store.loggedIn) "home" else "login") }
+                        val done: (String, String, String) -> Unit = { a, r, n -> store.save(a, r, n); screen = "home" }
+                        when (screen) {
+                            "login" -> LoginScreen(done) { screen = "register" }
+                            "register" -> RegisterScreen(done) { screen = "login" }
+                            else -> Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("خوش آمدید " + (store.displayName ?: ""), style = MaterialTheme.typography.titleLarge)
+                                Spacer(Modifier.height(16.dp))
+                                OutlinedButton(onClick = { store.clear(); screen = "login" }) { Text("خروج") }
+                            }
+                        }
                     }
                 }
             }
