@@ -13,6 +13,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import ir.dorehami.app.net.Api
 import ir.dorehami.app.net.ApiResult
+import ir.dorehami.app.util.Validators
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -59,9 +60,9 @@ fun LoginScreen(onLoggedIn: (String, String, String) -> Unit, onRegister: () -> 
             onClick = {
                 busy = true; error = null
                 scope.launch {
-                    val trimmed = id.trim()
-                    val isPhone = trimmed.firstOrNull()?.let { it.isDigit() || it == '+' } == true
-                    val body = JSONObject().put(if (isPhone) "phone" else "username", trimmed).put("password", pass)
+                    val trimmed = Validators.normalizeDigits(id.trim())
+                    val ph = Validators.normalizePhone(trimmed)
+                    val body = JSONObject().put(if (ph != null) "phone" else "username", ph ?: trimmed).put("password", pass)
                     handleAuth(Api.post("/auth/login", body), onLoggedIn) { error = it }
                     busy = false
                 }
@@ -112,16 +113,22 @@ fun RegisterScreen(onLoggedIn: (String, String, String) -> Unit, onBack: () -> U
         Button(
             enabled = !busy && terms && first.isNotBlank() && last.isNotBlank() && username.isNotBlank() && phone.isNotBlank() && pass.length >= 8 && birth.isNotBlank(),
             onClick = {
-                busy = true; error = null
-                scope.launch {
-                    val body = JSONObject()
-                        .put("firstName", first.trim()).put("lastName", last.trim())
-                        .put("username", username.trim()).put("phone", phone.trim())
-                        .put("password", pass).put("gender", gender).put("birthDate", birth.trim())
-                        .put("acceptTerms", true)
-                    if (insta.isNotBlank()) body.put("instagramId", insta.trim())
-                    handleAuth(Api.post("/auth/register", body), onLoggedIn) { error = it }
-                    busy = false
+                val ph = Validators.normalizePhone(phone)
+                val bd = Validators.normalizeBirthDate(birth)
+                if (ph == null) error = "شماره موبایل معتبر نیست (مثلاً 09123456789)."
+                else if (bd == null) error = "تاریخ تولد معتبر نیست (مثلاً 2000-05-21)."
+                else {
+                    busy = true; error = null
+                    scope.launch {
+                        val body = JSONObject()
+                            .put("firstName", first.trim()).put("lastName", last.trim())
+                            .put("username", username.trim()).put("phone", ph)
+                            .put("password", pass).put("gender", gender).put("birthDate", bd)
+                            .put("acceptTerms", true)
+                        if (insta.isNotBlank()) body.put("instagramId", insta.trim())
+                        handleAuth(Api.post("/auth/register", body), onLoggedIn) { error = it }
+                        busy = false
+                    }
                 }
             },
             modifier = full.height(48.dp),
