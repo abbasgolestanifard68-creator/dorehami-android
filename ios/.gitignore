@@ -1,0 +1,13 @@
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+DerivedData/
+build/
+.build/
+*.xcresult
+TestResults/
+Dorehami/Info.plist
+*.p12
+*.mobileprovision
+*.cer
+.DS_Store

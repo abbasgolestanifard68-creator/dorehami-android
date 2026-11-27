@@ -1,0 +1,49 @@
+# پروژهٔ Xcode با XcodeGen ساخته می‌شود: `brew install xcodegen && cd ios && xcodegen generate`
+# سپس Dorehami.xcodeproj را در Xcode باز کنید. فایل .xcodeproj در مخزن نگهداری نمی‌شود.
+name: Dorehami
+options:
+  bundleIdPrefix: ir.dorehami
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Dorehami:
+    type: application
+    platform: iOS
+    sources:
+      - Dorehami
+    info:
+      path: Dorehami/Info.plist
+      properties:
+        CFBundleDisplayName: دورهمی
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ir.dorehami.app
+  DorehamiTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - DorehamiTests
+    dependencies:
+      - target: Dorehami
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: ir.dorehami.app.tests
+schemes:
+  Dorehami:
+    build:
+      targets:
+        Dorehami: all
+    test:
+      targets:
+        - DorehamiTests
