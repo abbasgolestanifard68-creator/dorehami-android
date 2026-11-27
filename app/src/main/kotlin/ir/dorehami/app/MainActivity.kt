@@ -1,5 +1,6 @@
 package ir.dorehami.app
 
+import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,6 +23,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val store = SessionStore(applicationContext)
         val chatRepo = FakeChatRepository() // TODO: با پیاده‌سازی API واقعی جایگزین شود
+        val isDebug = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         setContent {
             DorehamiTheme {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -29,11 +31,12 @@ class MainActivity : ComponentActivity() {
                         // اندروید ۱۵ به‌صورت پیش‌فرض لبه‌به‌لبه است؛ محتوا را از زیر نوار وضعیت و کیبورد بیرون نگه می‌داریم
                         Box(Modifier.fillMaxSize().safeDrawingPadding()) {
                             var screen by remember { mutableStateOf(if (store.loggedIn) "home" else "login") }
+                            var demo by remember { mutableStateOf(false) }
                             val done: (String, String, String) -> Unit = { a, r, n -> store.save(a, r, n); screen = "home" }
                             when (screen) {
-                                "login" -> LoginScreen(done) { screen = "register" }
+                                "login" -> LoginScreen(done, { screen = "register" }, if (isDebug) ({ demo = true; screen = "home" }) else null)
                                 "register" -> RegisterScreen(done) { screen = "login" }
-                                else -> HomeScreen(store.displayName ?: "", chatRepo) { store.clear(); screen = "login" }
+                                else -> HomeScreen(if (demo) "کاربر آزمایشی" else (store.displayName ?: ""), chatRepo) { store.clear(); demo = false; screen = "login" }
                             }
                         }
                     }

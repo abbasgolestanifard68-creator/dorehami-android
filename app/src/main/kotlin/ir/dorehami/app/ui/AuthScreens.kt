@@ -13,6 +13,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import ir.dorehami.app.net.Api
 import ir.dorehami.app.net.ApiResult
+import ir.dorehami.app.util.Jalali
 import ir.dorehami.app.util.Validators
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -39,7 +40,7 @@ private fun handleAuth(r: ApiResult, onOk: (String, String, String) -> Unit, onE
 }
 
 @Composable
-fun LoginScreen(onLoggedIn: (String, String, String) -> Unit, onRegister: () -> Unit) {
+fun LoginScreen(onLoggedIn: (String, String, String) -> Unit, onRegister: () -> Unit, onDemo: (() -> Unit)? = null) {
     var id by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -70,6 +71,11 @@ fun LoginScreen(onLoggedIn: (String, String, String) -> Unit, onRegister: () -> 
             modifier = Modifier.fillMaxWidth().height(48.dp),
         ) { Text(if (busy) "…" else "ورود") }
         TextButton(onClick = onRegister) { Text("ثبت‌نام") }
+        // فقط در نسخهٔ debug نمایش داده می‌شود؛ بدون سرور و بدون ذخیرهٔ توکن
+        onDemo?.let {
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = it, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("ورود آزمایشی (فقط نسخه debug)") }
+        }
     }
 }
 
@@ -80,7 +86,9 @@ fun RegisterScreen(onLoggedIn: (String, String, String) -> Unit, onBack: () -> U
     var username by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
-    var birth by remember { mutableStateOf("") }
+    var birthJalali by remember { mutableStateOf<Triple<Int, Int, Int>?>(null) }
+    // برای سرور به میلادی تبدیل می‌شود؛ کاربر تاریخ شمسی انتخاب می‌کند
+    val birth = birthJalali?.let { Jalali.toGregorianString(it.first, it.second, it.third) } ?: ""
     var insta by remember { mutableStateOf("") }
     var gender by remember { mutableStateOf("male") }
     var terms by remember { mutableStateOf(false) }
@@ -98,7 +106,9 @@ fun RegisterScreen(onLoggedIn: (String, String, String) -> Unit, onBack: () -> U
         OutlinedTextField(phone, { phone = it }, label = { Text("شماره موبایل") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = full)
         OutlinedTextField(pass, { pass = it }, label = { Text("رمز عبور (حداقل ۸ نویسه)") }, singleLine = true, visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = full)
-        OutlinedTextField(birth, { birth = it }, label = { Text("تاریخ تولد میلادی (مثلاً 2000-05-21)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = full)
+        Spacer(Modifier.height(8.dp))
+        JalaliDateField(birthJalali, { birthJalali = it }, modifier = full)
+        Spacer(Modifier.height(8.dp))
         OutlinedTextField(insta, { insta = it }, label = { Text("آیدی اینستاگرام (اختیاری)") }, singleLine = true, modifier = full)
         Row(verticalAlignment = Alignment.CenterVertically, modifier = full) {
             RadioButton(gender == "male", { gender = "male" }); Text("مرد")
@@ -116,7 +126,7 @@ fun RegisterScreen(onLoggedIn: (String, String, String) -> Unit, onBack: () -> U
                 val ph = Validators.normalizePhone(phone)
                 val bd = Validators.normalizeBirthDate(birth)
                 if (ph == null) error = "شماره موبایل معتبر نیست (مثلاً 09123456789)."
-                else if (bd == null) error = "تاریخ تولد معتبر نیست (مثلاً 2000-05-21)."
+                else if (bd == null) error = "تاریخ تولد معتبر نیست؛ دوباره انتخاب کنید."
                 else {
                     busy = true; error = null
                     scope.launch {
