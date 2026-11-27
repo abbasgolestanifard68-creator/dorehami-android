@@ -10,6 +10,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
+import ir.dorehami.app.chat.ApiChatRepository
+import ir.dorehami.app.chat.ChatRepository
 import ir.dorehami.app.chat.FakeChatRepository
 import ir.dorehami.app.data.SessionStore
 import ir.dorehami.app.ui.DorehamiTheme
@@ -22,7 +24,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val store = SessionStore(applicationContext)
-        val chatRepo = FakeChatRepository() // TODO: با پیاده‌سازی API واقعی جایگزین شود
+        val demoRepo = FakeChatRepository() // برای «ورود آزمایشی» همیشه داده نمونه
+        val chatRepo: ChatRepository = if (Config.USE_FAKE_CHAT) demoRepo else ApiChatRepository(store)
         val isDebug = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         setContent {
             DorehamiTheme {
@@ -36,7 +39,7 @@ class MainActivity : ComponentActivity() {
                             when (screen) {
                                 "login" -> LoginScreen(done, { screen = "register" }, if (isDebug) ({ demo = true; screen = "home" }) else null)
                                 "register" -> RegisterScreen(done) { screen = "login" }
-                                else -> HomeScreen(if (demo) "کاربر آزمایشی" else (store.displayName ?: ""), chatRepo) { store.clear(); demo = false; screen = "login" }
+                                else -> HomeScreen(if (demo) "کاربر آزمایشی" else (store.displayName ?: ""), if (demo) demoRepo else chatRepo) { store.clear(); demo = false; screen = "login" }
                             }
                         }
                     }

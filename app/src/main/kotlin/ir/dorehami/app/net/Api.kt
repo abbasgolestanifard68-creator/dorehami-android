@@ -18,16 +18,22 @@ sealed class ApiResult {
 object Api {
     private val refreshLock = Mutex()
 
-    suspend fun post(path: String, body: JSONObject, token: String? = null): ApiResult = withContext(Dispatchers.IO) {
+    suspend fun post(path: String, body: JSONObject, token: String? = null): ApiResult = request("POST", path, body, token)
+
+    suspend fun get(path: String, token: String? = null): ApiResult = request("GET", path, null, token)
+
+    private suspend fun request(method: String, path: String, body: JSONObject?, token: String?): ApiResult = withContext(Dispatchers.IO) {
         try {
             val c = URL(Config.API_BASE + "/v1" + path).openConnection() as HttpURLConnection
-            c.requestMethod = "POST"
+            c.requestMethod = method
             c.connectTimeout = 15000
             c.readTimeout = 20000
-            c.doOutput = true
-            c.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             if (token != null) c.setRequestProperty("Authorization", "Bearer $token")
-            c.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            if (body != null) {
+                c.doOutput = true
+                c.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                c.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            }
             val status = c.responseCode
             val text = (if (status in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() } ?: "{}"
             val json = try { JSONObject(text) } catch (e: Exception) { JSONObject() }
@@ -39,10 +45,16 @@ object Api {
     }
 
     /** درخواست با توکن؛ اگر 401 شد یک‌بار توکن را تمدید می‌کند و دوباره تلاش می‌کند. */
-    suspend fun postAuthed(path: String, body: JSONObject, store: SessionStore): ApiResult {
-        val first = post(path, body, store.accessToken)
+    suspend fun postAuthed(path: String, body: JSONObject, store: SessionStore): ApiResult =
+        authed(store) { post(path, body, it) }
+
+    suspend fun getAuthed(path: String, store: SessionStore): ApiResult =
+        authed(store) { get(path, it) }
+
+    private suspend fun authed(store: SessionStore, call: suspend (String?) -> ApiResult): ApiResult {
+        val first = call(store.accessToken)
         if (first !is ApiResult.Fail || first.status != 401) return first
-        return if (refresh(store)) post(path, body, store.accessToken) else first
+        return if (refresh(store)) call(store.accessToken) else first
     }
 
     /** فرض: POST /v1/auth/refresh با {"refreshToken"} و پاسخی هم‌شکل ورود. باید با بک‌اند تأیید شود. */
