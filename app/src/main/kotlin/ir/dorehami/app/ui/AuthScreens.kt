@@ -104,8 +104,9 @@ fun RegisterScreen(onLoggedIn: (String, String, String) -> Unit, onBack: () -> U
         OutlinedTextField(last, { last = it }, label = { Text("نام خانوادگی") }, singleLine = true, modifier = full)
         OutlinedTextField(username, { username = it }, label = { Text("نام کاربری (انگلیسی)") }, singleLine = true, modifier = full)
         OutlinedTextField(phone, { phone = it }, label = { Text("شماره موبایل") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = full)
-        OutlinedTextField(pass, { pass = it }, label = { Text("رمز عبور (حداقل ۸ نویسه)") }, singleLine = true, visualTransformation = PasswordVisualTransformation(),
+        OutlinedTextField(pass, { pass = it }, label = { Text("رمز عبور") }, singleLine = true, visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), modifier = full)
+        PasswordRules(pass)
         Spacer(Modifier.height(8.dp))
         JalaliDateField(birthJalali, { birthJalali = it }, modifier = full)
         Spacer(Modifier.height(8.dp))
@@ -121,7 +122,7 @@ fun RegisterScreen(onLoggedIn: (String, String, String) -> Unit, onBack: () -> U
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Spacer(Modifier.height(12.dp))
         Button(
-            enabled = !busy && terms && first.isNotBlank() && last.isNotBlank() && username.isNotBlank() && phone.isNotBlank() && pass.length >= 8 && birth.isNotBlank(),
+            enabled = !busy && terms && first.isNotBlank() && last.isNotBlank() && username.isNotBlank() && phone.isNotBlank() && Validators.isStrongPassword(pass) && birth.isNotBlank(),
             onClick = {
                 val ph = Validators.normalizePhone(phone)
                 val bd = Validators.normalizeBirthDate(birth)
@@ -144,5 +145,27 @@ fun RegisterScreen(onLoggedIn: (String, String, String) -> Unit, onBack: () -> U
             modifier = full.height(48.dp),
         ) { Text(if (busy) "…" else "ثبت‌نام") }
         TextButton(onClick = onBack) { Text("بازگشت") }
+    }
+}
+
+/** فهرست قوانین رمز عبور که با تایپ کاربر زنده به‌روز می‌شود. */
+@Composable
+private fun PasswordRules(pass: String) {
+    val c = Validators.checkPassword(pass)
+    val rules = listOf(
+        c.longEnough to "حداقل ۸ نویسه",
+        c.hasLower to "یک حرف کوچک انگلیسی (a-z)",
+        c.hasUpper to "یک حرف بزرگ انگلیسی (A-Z)",
+        c.hasDigit to "یک عدد انگلیسی (0-9)",
+        c.hasSymbol to "یک علامت مانند ! @ # \$ % &",
+    )
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        rules.forEach { (ok, text) ->
+            Text(
+                (if (ok) "✓ " else "✗ ") + text,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

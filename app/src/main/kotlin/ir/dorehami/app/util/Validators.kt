@@ -38,4 +38,25 @@ object Validators {
             null
         }
     }
+
+    /** نتیجهٔ بررسی قوانین رمز عبور؛ فقط نویسه‌های انگلیسی (ASCII) برای حرف، عدد و علامت حساب می‌شوند. */
+    data class PasswordCheck(
+        val longEnough: Boolean,
+        val hasLower: Boolean,
+        val hasUpper: Boolean,
+        val hasDigit: Boolean,
+        val hasSymbol: Boolean,
+    ) {
+        val ok: Boolean get() = longEnough && hasLower && hasUpper && hasDigit && hasSymbol
+    }
+
+    fun checkPassword(p: String) = PasswordCheck(
+        longEnough = p.length >= 8,
+        hasLower = p.any { it in 'a'..'z' },
+        hasUpper = p.any { it in 'A'..'Z' },
+        hasDigit = p.any { it in '0'..'9' },
+        hasSymbol = p.any { it.code in 33..126 && !it.isLetterOrDigit() },
+    )
+
+    fun isStrongPassword(p: String): Boolean = checkPassword(p).ok
 }
