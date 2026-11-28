@@ -4,6 +4,15 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// کلید debug ثابت (محرمانه نیست و فقط برای debug است): بدون آن، هر ساخت در CI کلید تازه‌ای می‌سازد
+// و اثر انگشت SHA1 عوض می‌شود (مجوز نقشه به آن وابسته است). هرگز برای release استفاده نشود.
+val debugKeystoreB64 = file("debug-keystore.b64")
+val debugKeystore = layout.buildDirectory.file("debug.keystore").get().asFile
+if (debugKeystoreB64.exists()) {
+    debugKeystore.parentFile.mkdirs()
+    debugKeystore.writeBytes(java.util.Base64.getMimeDecoder().decode(debugKeystoreB64.readText()))
+}
+
 android {
     namespace = "ir.dorehami.app"
     compileSdk = 35
@@ -14,6 +23,17 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+    }
+
+    signingConfigs {
+        getByName("debug") {
+            if (debugKeystore.exists()) {
+                storeFile = debugKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
     }
 
     buildTypes {
