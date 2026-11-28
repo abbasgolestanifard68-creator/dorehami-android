@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -7,10 +9,14 @@ plugins {
 // کلید debug ثابت (محرمانه نیست و فقط برای debug است): بدون آن، هر ساخت در CI کلید تازه‌ای می‌سازد
 // و اثر انگشت SHA1 عوض می‌شود (مجوز نقشه به آن وابسته است). هرگز برای release استفاده نشود.
 val debugKeystoreB64 = file("debug-keystore.b64")
-val debugKeystore = layout.buildDirectory.file("debug.keystore").get().asFile
+val debugKeystore = File(projectDir, "build/debug.keystore")
 if (debugKeystoreB64.exists()) {
-    debugKeystore.parentFile.mkdirs()
-    debugKeystore.writeBytes(java.util.Base64.getMimeDecoder().decode(debugKeystoreB64.readText()))
+    try {
+        debugKeystore.parentFile.mkdirs()
+        debugKeystore.writeBytes(Base64.getMimeDecoder().decode(debugKeystoreB64.readText()))
+    } catch (e: Exception) {
+        logger.warn("debug keystore could not be prepared: ${e.message}")
+    }
 }
 
 android {
