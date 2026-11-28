@@ -18,6 +18,7 @@ import ir.dorehami.app.chat.ChatRepository
 import ir.dorehami.app.chat.Conversation
 import ir.dorehami.app.chat.Message
 import ir.dorehami.app.chat.MessageStatus
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -36,9 +37,30 @@ private fun statusMark(s: MessageStatus): String = when (s) {
 @Composable
 fun ChatListScreen(repo: ChatRepository, refreshKey: Int, onOpen: (Conversation) -> Unit) {
     var loaded by remember { mutableStateOf<List<Conversation>?>(null) }
-    LaunchedEffect(repo, refreshKey) { loaded = repo.conversations() }
+    var failed by remember { mutableStateOf<String?>(null) }
+    var retry by remember { mutableStateOf(0) }
+    LaunchedEffect(repo, refreshKey, retry) {
+        failed = null
+        try {
+            loaded = repo.conversations()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            failed = e.message ?: "دریافت گفتگوها ناموفق بود."
+        }
+    }
     val list = loaded
+    val err = failed
     when {
+        list == null && err != null -> Column(
+            Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(err, color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(onClick = { retry++ }) { Text("تلاش دوباره") }
+        }
         list == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         list.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("هنوز گفتگویی ندارید") }
         else -> LazyColumn(Modifier.fillMaxSize()) {
@@ -65,10 +87,19 @@ fun ChatScreen(repo: ChatRepository, conversation: Conversation, onBack: () -> U
     BackHandler(onBack = onBack)
     var messages by remember { mutableStateOf<List<Message>>(emptyList()) }
     var text by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    LaunchedEffect(conversation.id) { messages = repo.messages(conversation.id) }
+    LaunchedEffect(conversation.id) {
+        try {
+            messages = repo.messages(conversation.id)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            error = e.message ?: "دریافت پیام‌ها ناموفق بود."
+        }
+    }
     LaunchedEffect(messages.size) { if (messages.isNotEmpty()) listState.animateScrollToItem(messages.lastIndex) }
 
     Column(Modifier.fillMaxSize()) {
@@ -86,6 +117,7 @@ fun ChatScreen(repo: ChatRepository, conversation: Conversation, onBack: () -> U
             items(messages, key = { it.id }) { MessageBubble(it) }
         }
         HorizontalDivider()
+        error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) }
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(text, { text = it }, modifier = Modifier.weight(1f), placeholder = { Text("پیام…") }, maxLines = 4)
             Spacer(Modifier.width(8.dp))
@@ -93,8 +125,17 @@ fun ChatScreen(repo: ChatRepository, conversation: Conversation, onBack: () -> U
                 enabled = text.isNotBlank(),
                 onClick = {
                     val t = text.trim()
-                    text = ""
-                    scope.launch { messages = messages + repo.send(conversation.id, t) }
+                    error = null
+                    scope.launch {
+                        try {
+                            messages = messages + repo.send(conversation.id, t)
+                            text = ""
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            error = e.message ?: "ارسال پیام ناموفق بود." // متن در کادر می‌ماند تا دوباره تلاش شود
+                        }
+                    }
                 },
             ) { Text("ارسال") }
         }

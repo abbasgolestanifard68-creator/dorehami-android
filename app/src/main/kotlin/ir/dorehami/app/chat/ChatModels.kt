@@ -13,7 +13,10 @@ data class Message(
     val status: MessageStatus = MessageStatus.SENT,
 )
 
-/** لایهٔ داده چت. تا نهایی شدن API و بک‌اند، FakeChatRepository جایگزین پیاده‌سازی واقعی است. */
+/** خطای قابل نمایش به کاربر هنگام کار با چت (مثلاً قطع اتصال). */
+class ChatException(message: String) : Exception(message)
+
+/** لایهٔ داده چت. با Config.USE_FAKE_CHAT بین داده نمونه و API واقعی عوض می‌شود. */
 interface ChatRepository {
     suspend fun conversations(): List<Conversation>
     suspend fun messages(conversationId: String): List<Message>
